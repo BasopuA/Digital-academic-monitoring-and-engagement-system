@@ -1,0 +1,76 @@
+#specify services to run as stack
+services:
+
+  db:
+    image: postgres:15
+    container_name: dames-db
+    environment:
+      # Environment variables for PostgreSQL (from .env)
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data # Persist data in a volume
+    healthcheck:
+      # Check if PostgreSQL is ready to accept connections
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  #specify backend service
+  backend:
+    #build backend service from dockerfile inside /backend
+    build: ./backend
+    #specify backend container name
+    container_name: backend-app
+    #mapping port 8000 on host to port 8000 on the container
+    ports:
+      - "8000:8000"
+    environment:
+      #database connection string
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - CARD_EXPIRE_MINUTES=${CARD_EXPIRE_MINUTES}
+#    volumes:
+#      - ./:/app
+    #setting dependancy so that backend waits for database to run
+    depends_on:
+      db:
+        condition: service_healthy
+    #state how to check health status of the container
+    healthcheck:
+      #command to run when checking health status of the container
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 5s #frequency at which the health check command will be executed
+      timeout: 10s #maximum amount of time the health check command is allowed to run
+      retries: 5 #number of consecutive failed health checks that must occur before the container is marked as unhealthy.
+      start_period: 10s #initial delay period after a container starts
+
+  frontend:
+    #build backend service from dockerfile inside /frontend
+    build: ./frontend
+    container_name: frontend-app
+    depends_on:
+      backend:
+        condition: service_healthy
+    #mapping port 3000 on host to port 3000 on the container
+    ports:
+      - "3030:3000"
+    healthcheck:
+      #command to run when checking health status of the container
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 5s #frequency at which the health check command will be executed
+      timeout: 10s #maximum amount of time the health check command is allowed to run
+      retries: 5 #number of consecutive failed health checks that must occur before the container is marked as unhealthy.
+      start_period: 10s #initial delay period after a container starts
+
+
+
+volumes:
+  pgdata: # Named volume to persist PostgreSQL data
