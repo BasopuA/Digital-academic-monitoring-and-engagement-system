@@ -7,8 +7,6 @@ from typing import List
 from services.users import UserService
 from database import get_db
 from schemas.users import UserCreate, UserResponse, UserUpdate
-
-
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
