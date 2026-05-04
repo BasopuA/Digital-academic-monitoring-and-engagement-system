@@ -2,7 +2,7 @@
 
 from sqlalchemy import Column, Integer, String, Boolean
 
-from database import Base
+from app.database.connection import Base
 
 
 class User(Base):

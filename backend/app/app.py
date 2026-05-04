@@ -3,9 +3,9 @@ import uvicorn
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 
-from services.seed_service import SeedService
-from database import session_local, init_db, engine
-from routes.user import router as user_router
+from app.services.seed_service import SeedService
+from app.database.connection import session_local, init_db, engine
+from app.routes.user import router as user_router
 
 
 @asynccontextmanager

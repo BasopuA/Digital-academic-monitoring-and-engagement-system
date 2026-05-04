@@ -1,0 +1,127 @@
+name: EduTrackSA Test & Deploy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+concurrency:
+  group: deploy-auto-test-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+  BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+  COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  # ───────── Linting & Formatting ─────────
+  linting-formatting:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'Test')
+    name: Lint Codebase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
+
+      - name: Clean pycache
+        run: sudo find . -type d -name "__pycache__" -exec rm -rf {} +
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      # Backend lint
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pylint black
+
+      - name: Lint & format backend
+        working-directory: backend
+        run: |
+          export PYTHONPATH=$(pwd)
+          pylint .
+          black . --check
+
+      # Frontend lint
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: |
+          npm install
+          npm run lint
+
+  # ───────── Build ─────────
+  building:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'Test')
+    name: Build Frontend
+    needs: linting-formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
+
+      - name: Clean pycache
+        run: sudo find . -type d -name "__pycache__" -exec rm -rf {} +
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install & Build frontend
+        working-directory: frontend
+        run: |
+          npm install
+          npm run build
+
+  # ───────── Deploy ─────────
+  deploy:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'Test')
+    name: Deploy to Server
+    needs: building
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Deploy via Docker Compose
+        run: |
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch origin ${{ env.BRANCH_NAME }}
+            git checkout ${{ env.BRANCH_NAME }}
+            git reset --hard ${{ env.COMMIT_SHA }}
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml ps
+          EOF
