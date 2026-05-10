@@ -1,69 +1,56 @@
-"""
-Creating schema for user entity.
-"""
-
-# pylint: disable=import-error,too-few-public-methods
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class UserBase(BaseModel):
-    """
-    Base schema for User.
+    """Base schema for User."""
+    username: str = Field(..., min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
 
-    Attributes:
-        username (str): The username of the user.
-        active (bool): Whether the user is active.
-    """
-
-    username: str
-    password: str 
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(UserBase):
-    """
-    Schema for creating a new User.
+    """Schema for creating a new User."""
+    password: str = Field(..., min_length=8)
 
-    Attributes:
-        password (str): Password for the user.
-        employee_id (Optional[int]): Related employee ID.
-    """
+
+class UserLogin(BaseModel):
+    """Schema for user login."""
+    username: str
+    password: str
+
 
 class UserUpdate(BaseModel):
-    """
-    Schema for updating a User.
-
-    Attributes:
-        username (Optional[str]): Updated username.
-        password (Optional[str]): Updated password.
-        active (Optional[bool]): Updated active status.
-        employee_id (Optional[int]): Updated employee reference.
-    """
-
-    username: Optional[str] = None
-    active: Optional[bool] = None
-    password:  Optional[str] = None
+    """Schema for updating a User."""
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
+    is_admin: Optional[bool] = None
 
 
 class UserResponse(UserBase):
-    """
-    Schema for returning User data in API responses.
+    """Schema for returning User data in API responses."""
+    id: int
+    is_active: bool
+    is_admin: bool
+    created_at: datetime
 
-    Attributes:
-        id (int): Unique identifier of the user.
-        employee (Optional[EmployeeResponse]): Related employee information.
-    """
+    model_config = ConfigDict(from_attributes=True)
 
 
-class UserInfo(BaseModel):
-    """Represents a user's basic information.
+class Token(BaseModel):
+    """JWT Token response schema."""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
 
-    Attributes:
-        preferred_username (str): The user's preferred username.
-        email (Optional[str]): The user's email address. Defaults to None.
-        full_name (Optional[str]): The user's full name. Defaults to None.
-    """
 
-    preferred_username: str
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+class TokenPayload(BaseModel):
+    """Decoded token payload schema."""
+    sub: str  # user ID
+    type: str  # "access" or "refresh"
+    exp: int
+    iat: int

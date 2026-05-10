@@ -3,9 +3,10 @@ import uvicorn
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 
-from services.seed_service import SeedService
-from database import session_local, init_db, engine
-from routes.user import router as user_router
+from app.services.seed_service import SeedService
+from app.database.connection import SessionLocal, init_db, engine
+from app.routes.user import router as user_router
+from app.routes.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -13,7 +14,7 @@ async def lifespan(application: FastAPI):
     """Application lifespan context to initialize DB and seed data."""
     await init_db()
 
-    async with session_local() as db:
+    async with SessionLocal() as db:
         seed_service = SeedService(db)
         await seed_service.seed_first_user()
 
@@ -46,6 +47,7 @@ def read_root():
 
 
 app.include_router(user_router)
+app.include_router(auth_router)
 
 
 if __name__ == "__main__":
