@@ -1,4 +1,4 @@
-# Digital-academic-monitoring-and-engagement-system
+# EduTrackSA
 
 A full-stack application for managing and monitoring academic engagement, built with **FastAPI (backend)** and **Next.js (frontend)**, containerized using Docker.
 
@@ -9,8 +9,8 @@ A full-stack application for managing and monitoring academic engagement, built 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/Digital-academic-monitoring-and-engagement-system.git
-cd Digital-academic-monitoring-and-engagement-system
+git clone git@github.com:BasopuA/EduTrackSA.git
+cd EduTrackSA
 ```
 
 ---

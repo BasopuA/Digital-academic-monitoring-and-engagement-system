@@ -7,6 +7,8 @@ from app.services.seed_service import SeedService
 from app.database.connection import SessionLocal, init_db, engine
 from app.routes.user import router as user_router
 from app.routes.auth import router as auth_router
+from app.routes.content import router as content_router
+from app.routes.quiz import router as quiz_router
 
 
 @asynccontextmanager
@@ -48,6 +50,8 @@ def read_root():
 
 app.include_router(user_router)
 app.include_router(auth_router)
+app.include_router(content_router)
+app.include_router(quiz_router)
 
 
 if __name__ == "__main__":
